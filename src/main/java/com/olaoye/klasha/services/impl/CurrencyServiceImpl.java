@@ -1,6 +1,6 @@
 package com.olaoye.klasha.services.impl;
 
-import com.olaoye.klasha.exceptions.CurrencyNotFoundException;
+import com.olaoye.klasha.exceptions.EntityNotFoundException;
 import com.olaoye.klasha.services.CountryService;
 import com.olaoye.klasha.services.CurrencyService;
 import lombok.RequiredArgsConstructor;
@@ -69,7 +69,7 @@ public class CurrencyServiceImpl implements CurrencyService {
             localCurrencyAmount = foreignCurrencyAmount * GBP_UGX;
             roundedAmount = BigDecimal.valueOf(localCurrencyAmount);
             return (localCurrency + roundedAmount);
-        } else throw new CurrencyNotFoundException(country);
+        } else throw new EntityNotFoundException("No entity found for parameter: "+country);
 
 
     }

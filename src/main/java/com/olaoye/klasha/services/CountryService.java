@@ -10,7 +10,7 @@ public interface CountryService {
     String getCapitalCity(String countryIso2) throws IOException;
     CountryPopulationResponse getCountryPopulation(String country);
 
-    Iso2And3Response getIso2AndIso3(String country);
+    Iso2And3Response getCountryIso(String country);
 
     LocationResponse getLocation(String country);
 

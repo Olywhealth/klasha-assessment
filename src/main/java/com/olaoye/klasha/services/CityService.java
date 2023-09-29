@@ -10,7 +10,8 @@ public interface CityService {
      * @return the top <numberOfCities> cities in order of cityPopulation.
      * If there are not enough cities, return the available ones;
      */
-    List<PopulousCitiesResponse> sortedCitiesOfItalyGhanaNewZealand(String numberOfCities);
+
+    List<PopulousCitiesResponse> sortedCitiesOfItalyGhanaNewZealand(Integer numberOfCities);
 
     CityPopulationResponse getCityPopulation(String cityName);
 

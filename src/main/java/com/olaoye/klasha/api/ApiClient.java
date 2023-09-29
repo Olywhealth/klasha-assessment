@@ -7,15 +7,49 @@ import java.io.IOException;
 
 @Slf4j
 public class ApiClient {
-    public static String sendOkHttpRequestCountry(String urlLink, String country) throws IOException {
-        OkHttpClient client = new OkHttpClient().newBuilder()
-                .build();
+
+
+
+
+    public static String sendOkHttpRequest(String urlLink, String requestType, String... params) throws IOException {
+        OkHttpClient client = new OkHttpClient();
+
         MediaType mediaType = MediaType.parse("application/json");
-        RequestBody body = RequestBody.create(mediaType, "{\"country\": \"" + country + "\"}");
+        String jsonBody = "";
+
+        switch (requestType.toLowerCase()) {
+            case "country":
+                if (params.length != 1) {
+                    throw new IllegalArgumentException("Invalid number of parameters for 'country' request");
+                }
+                jsonBody = "{\"country\": \"" + params[0] + "\"}";
+                break;
+
+            case "stateandcountry":
+                if (params.length != 2) {
+                    throw new IllegalArgumentException("Invalid number of parameters for 'stateandcountry' request");
+                }
+                jsonBody = String.format("{\"country\": \"%s\", \"state\": \"%s\"}", params[0], params[1]);
+                break;
+
+            case "city":
+                if (params.length != 1) {
+                    throw new IllegalArgumentException("Invalid number of parameters for 'city' request");
+                }
+                jsonBody = String.format("{\"city\": \"%s\"}", params[0]);
+                break;
+
+            default:
+                throw new IllegalArgumentException("Invalid request type");
+        }
+
+        RequestBody body = RequestBody.create(mediaType, jsonBody);
+
         Request request = new Request.Builder()
                 .url(urlLink)
-                .method("POST", body)
+                .post(body)
                 .build();
+
         try (Response response = client.newCall(request).execute()) {
             log.info("RESPONSE: {}", response);
             assert response.body() != null;
@@ -24,35 +58,4 @@ public class ApiClient {
     }
 
 
-    public static String sendOkHttpRequestStateAndCountry(String urlLink, String country, String state) throws IOException {
-        OkHttpClient client = new OkHttpClient().newBuilder()
-                .build();
-        MediaType mediaType = MediaType.parse("application/json");
-        RequestBody body = RequestBody.create(mediaType, "{\n\"country\": \"" + country + "\",\n \"state\": \"" + state + "\"\n}");
-        Request request = new Request.Builder()
-                .url(urlLink)
-                .method("POST", body)
-                .build();
-        try (Response response = client.newCall(request).execute()) {
-            log.info("RESPONSE: {}", response);
-            assert response.body() != null;
-            return response.body().string();
-        }
-    }
-
-    public static String sendOkHttpRequestCity(String urlLink, String city) throws IOException {
-        OkHttpClient client = new OkHttpClient().newBuilder()
-                .build();
-        MediaType mediaType = MediaType.parse("application/json");
-        RequestBody body = RequestBody.create(mediaType, "{\n\"city\": \"" + city + "\"\n}");
-        Request request = new Request.Builder()
-                .url(urlLink)
-                .method("POST", body)
-                .build();
-        try (Response response = client.newCall(request).execute()) {
-            log.info("RESPONSE: {}", response);
-            assert response.body() != null;
-            return response.body().string();
-        }
-    }
 }

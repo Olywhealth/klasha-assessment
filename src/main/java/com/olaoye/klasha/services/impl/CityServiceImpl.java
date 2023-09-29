@@ -6,89 +6,79 @@ import com.olaoye.klasha.Domain.response.CountryCitiesResponse;
 import com.olaoye.klasha.Domain.response.PopulousCitiesResponse;
 import com.olaoye.klasha.api.ApiClient;
 import com.olaoye.klasha.constants.CountriesNowConfigProperties;
-import com.olaoye.klasha.exceptions.CityPopulationNotFoundException;
-import com.olaoye.klasha.exceptions.InvalidNumberException;
+import com.olaoye.klasha.exceptions.EntityNotFoundException;
 import com.olaoye.klasha.services.CityService;
 import com.olaoye.klasha.services.CountryService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CityServiceImpl implements CityService {
 
     private final CountriesNowConfigProperties config;
+    private final CountryService countryService;
     @Value("${countries.now.baseUrl}")
     private String baseUrl;
 
-    private final CountryService countryService;
-
     @Override
-    public List<PopulousCitiesResponse> sortedCitiesOfItalyGhanaNewZealand(String numberOfCities) {
-        long cityNumbers = Long.parseLong(numberOfCities);
-        if (cityNumbers < 1) {
-            throw new InvalidNumberException(cityNumbers);
-        }
-        String[] countryCodes = {"italy", "ghana", "new zealand"};
-        List<PopulousCitiesResponse> sortedCities = new ArrayList<>();
-        for (String countryCode : countryCodes) {
-            CountryCitiesResponse countryCities = countryService.getCitiesInCountry(countryCode);
-            for (String city : countryCities.getData()) {
-                PopulousCitiesResponse populousCity = new PopulousCitiesResponse();
-                populousCity.setCityName(city);
-
-                long population = getLatestPopulation(city);
-                populousCity.setPopulation(population);
-
-                sortedCities.add(populousCity);
-            }
+    public List<PopulousCitiesResponse> sortedCitiesOfItalyGhanaNewZealand(Integer numberOfCities) {
+        if (numberOfCities < 1) {
+            throw new EntityNotFoundException("Invalid input: "+numberOfCities);
         }
 
-        sortedCities.sort(Comparator.comparingLong(PopulousCitiesResponse::getPopulation).reversed());
-        if (cityNumbers < sortedCities.size()) {
-            sortedCities = sortedCities.subList(0, (int) cityNumbers);
-        }
+        List<String> countryCodes = new ArrayList<>(Arrays.asList("italy", "ghana", "new zealand"));
 
-        if (sortedCities.isEmpty()) {
-            throw new CityPopulationNotFoundException("Italy, New Zealand, Ghana");
-        }
-
-        return sortedCities;
+        return countryCodes.stream()
+                .flatMap(countryCode -> {
+                    CountryCitiesResponse countryCities = countryService.getCitiesInCountry(countryCode);
+                    return countryCities.getData().stream().map(city -> {
+                        PopulousCitiesResponse populousCity = new PopulousCitiesResponse();
+                        populousCity.setCityName(city);
+                        long population = getLatestPopulation(city);
+                        populousCity.setPopulation(population);
+                        return populousCity;
+                    });
+                })
+                .sorted(Comparator.comparingLong(PopulousCitiesResponse::getPopulation).reversed())
+                .limit(numberOfCities)
+                .collect(Collectors.toList());
     }
 
 
     @Override
     public CityPopulationResponse getCityPopulation(String city) {
         try {
-            String jsonResponse = ApiClient.sendOkHttpRequestCity(baseUrl.concat(config.getCityPopulation()), city);
+            String jsonResponse = ApiClient.sendOkHttpRequest(baseUrl.concat(config.getCityPopulation()), city);
             Gson gson = new Gson();
             CityPopulationResponse cityPopulationResponse = gson.fromJson(jsonResponse, CityPopulationResponse.class);
-            System.out.println(cityPopulationResponse.toString());
-
+            log.info("CITY POPULATION RESPONSE: {}", cityPopulationResponse);
             return cityPopulationResponse;
         } catch (Exception e) {
-            throw new CityPopulationNotFoundException(city);
+            throw new EntityNotFoundException("No entity found for your entry: " + city);
         }
     }
 
     public Long getLatestPopulation(String city) {
         CityPopulationResponse populationResponse = getCityPopulation(city.toLowerCase());
-        if(populationResponse.getData() == null || populationResponse.getData().getPopulationCounts()== null ){
+        if (populationResponse.getData() == null || populationResponse.getData().getPopulationCounts() == null) {
             return 0L;
         }
         String population = populationResponse.
                 getData()
                 .getPopulationCounts().get(0).getValue();
-        System.out.println("population = " + population);
-
-        if(population == null){
-          return 0L;
-      }
+        log.info("LATEST POPULATION:  {}", population);
+        if (population == null) {
+            return 0L;
+        }
         return Long.valueOf(population);
     }
 }
